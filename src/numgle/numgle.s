@@ -134,6 +134,24 @@ str_pop_front:
         ret
 
 ###############################################################################
+# Separate hangul routine
+###############################################################################
+# rdi: code point
+# rsi: result pointer
+separate_hangul:
+        mov ebx, edi
+        sub ebx, 44032
+        mov eax, ebx
+        mov r12d, 28
+        div r12d
+        mov [rsi+8], edx
+        mov r12d, 21
+        div r12d
+        mov [rsi+4], edx
+        mov [rsi], eax
+        ret
+
+###############################################################################
 # Numgle routine
 ###############################################################################
 _numgle_codepoint:
@@ -148,8 +166,9 @@ numgle:
         .set codepoint, 0
         .set output_str, 4
         .set letter_type, 12
-        .set newline_str, 16    
-        sub rsp, 32
+        .set newline_str, 16
+        .set separated, 20
+        sub rsp, 64
         mov [rsp+output_str], rdi 
         mov [rsp+codepoint], esi
         # Get letter type
@@ -176,6 +195,10 @@ numgle_empty:
         jmp numgle_append_newline
 
 numgle_complete_hangul:
+        mov edi, [rsp+codepoint]
+        lea rsi, [rsp+separated]
+        call separate_hangul
+
         jmp numgle_append_newline
 
 numgle_not_complete_hangul:
