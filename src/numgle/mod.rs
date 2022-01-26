@@ -1,48 +1,66 @@
 #![feature(global_asm)]
 use std::arch::global_asm;
-use std::ffi::CStr;
 use std::os::raw::c_char;
 
-pub struct RustStr {
-    pub buffer: Vec<u8>,
-    pub len: u32
-}
-
 #[repr(C)]
-pub struct Str {
-    pub data: *mut u8,
-    pub len: u32,
-    pub capacity: u32
+pub struct NStrFFI {
+    data: *mut u8,
+    len: u32,
+    capacity: u32
+}
+pub struct NStr {
+    pub buffer: Vec<u8>,
+    ffi: NStrFFI
 }
 
-impl RustStr {
+impl NStr {
     pub fn new(len: usize) -> Self {
+        let mut buf = vec![0; len];
+        let buf_ptr = buf.as_mut_ptr();
         Self {
-            buffer: vec![0; len],
-            len: 0
+            buffer: buf,
+            ffi: NStrFFI {
+                data: buf_ptr,
+                len: 0,
+                capacity: len as u32
+            }
         }
     }
 
-    pub fn to_ffi(&mut self) -> Str {
-        Str {
-            data: self.buffer.as_mut_ptr(),
-            len: self.len,
-            capacity: self.buffer.len() as u32
+    pub fn from(str: &str) -> Self {
+        let mut buf =  str.as_bytes().to_vec();
+        buf.push(0);
+        let buf_ptr = buf.as_mut_ptr();
+        Self {
+            buffer: buf,
+            ffi: NStrFFI {
+                data: buf_ptr,
+                len: str.len() as u32,
+                capacity: str.len() as u32
+            }
         }
     }
 
+    pub fn get_ffi(&mut self) -> *mut NStrFFI {
+        &mut self.ffi
+    }
+
+    pub fn len(&self) -> usize {
+        self.ffi.len as usize
+    }
+    
     pub fn to_str(&self) -> String {
-        String::from_utf8(self.buffer[0..(self.len as usize)].to_vec()).unwrap()
+        String::from_utf8(self.buffer[0..self.ffi.len as usize].to_vec()).unwrap()
     }
 }
 
 global_asm!(include_str!("numgle.s"));
 extern "C" {
-    pub fn _numgle(s: *const c_char) -> u32;
-    pub fn _decode_codepoint(s: *const c_char) -> u32;
-    pub fn _get_letter_type(s: u32) -> u32;
-    pub fn _numgle_codepoint(str: *mut Str, s: u32);
-    pub fn _str_append(str: *mut Str, new: *const c_char);
+    pub fn numgle_char(input: *mut NStrFFI, output: *mut NStrFFI) -> u32;
+    fn _decode_codepoint(s: *const c_char) -> u32;
+    fn _get_letter_type(s: u32) -> u32;
+    fn _numgle_codepoint(str: *mut NStrFFI, s: u32);
+    fn _str_append(str: *mut NStrFFI, new: *const c_char);
 }
 
 mod tests {
@@ -74,12 +92,11 @@ mod tests {
 
     #[test]
     fn test_str_append() {
-        let mut str = RustStr::new(100);
-        let mut ffi = str.to_ffi();
+        let mut str = NStr::new(100);
         let cs = CString::new("Hello").unwrap();
         unsafe {
-            _str_append(&mut ffi, cs.as_ptr());
-            assert_eq!(ffi.len, 5);
+            _str_append(str.get_ffi(), cs.as_ptr());
+            assert_eq!(str.len(), 5);
             assert_eq!(str.buffer[0], 'H' as u8);
             assert_eq!(str.buffer[1], 'e' as u8);
             assert_eq!(str.buffer[2], 'l' as u8);
@@ -94,11 +111,9 @@ mod tests {
             (72, "工\n")
         ];
         for (s, expected) in data.iter() {
-            let mut str = RustStr::new(100);
-            let mut ffi = str.to_ffi();
+            let mut str = NStr::new(100);
             unsafe {
-                _numgle_codepoint(&mut ffi, *s);
-                str.len = ffi.len;
+                _numgle_codepoint(str.get_ffi(), *s);
             }
             assert_eq!(str.to_str(), *expected);
         }

@@ -70,6 +70,50 @@ fn hex_table(data: &[String]) -> (String, usize) {
     (joined, max_size)
 }
 
+
+fn hex_table_2d(data: &[Vec<String>]) -> (String, usize, usize) {
+    let element_size_bytes = align(data.iter().flat_map(|item| {
+        item.iter().map(|i: &String| { i.as_bytes().len() })
+    }).reduce(|accum, item| {
+        std::cmp::max(accum, item)
+    }).unwrap() + 1,4);
+    let row_size = data.iter().map(|item| {
+        item.len()
+    }).reduce(|accum, item| {
+        std::cmp::max(accum, item)
+    }).unwrap();
+
+    let mut table: Vec<u8> = Vec::with_capacity(row_size * element_size_bytes * data.len());
+    data.iter().for_each(|row| {
+        for k in 0..row.len() {
+            let s = &row[k];
+            for i in 0..s.len() {
+                table.push(s.as_bytes()[i]);
+            }
+            for i in s.len()..element_size_bytes {
+                table.push(0);
+            }
+        }
+        for k in row.len()..row_size {
+            for i in 0..element_size_bytes {
+                table.push(0);
+            }
+        }
+    });
+    let mut joined = String::from(".byte ");
+    let MAX_LINE = 16;
+    for i in 0..table.len() {
+        joined += &format!("0x{:02x?}", table[i]);
+        if i % MAX_LINE == 0 && i != 0 {
+            joined += "\n";
+            joined +=  "        .byte ";
+        } else if i != table.len() - 1 {
+            joined += ",";
+        }
+    }
+    (joined, row_size*element_size_bytes, element_size_bytes)
+}
+
 fn hex_word(word: u32) -> String {
     format!("0x{:02x},0x{:02x},0x{:02x},0x{:02x}", word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF, word >> 24)
 }
@@ -113,6 +157,7 @@ fn main() {
     let english_upper_table = hex_table(&dataset.englishUpper);
     let english_lower_table = hex_table(&dataset.englishLower);
     let number_table = hex_table(&dataset.number);
+    let cj_table = hex_table_2d(&dataset.cj);
     println!(".set cho_table_stride, {}", cho_table.1);
     println!(".set jung_table_stride, {}", jung_table.1);
     println!(".set jong_table_stride, {}", jong_table.1);
@@ -120,6 +165,8 @@ fn main() {
     println!(".set english_upper_table_stride, {}", english_upper_table.1);
     println!(".set english_lower_table_stride, {}", english_lower_table.1);
     println!(".set number_table_stride, {}", number_table.1);
+    println!(".set cj_table_stride, {}", cj_table.1);
+    println!(".set cj_table_element_size, {}", cj_table.2);
     println!("cho_table: {}", cho_table.0);
     println!("jung_table: {}", jung_table.0);
     println!("jong_table: {}", jong_table.0);
@@ -127,5 +174,6 @@ fn main() {
     println!("english_upper_table: {}", english_upper_table.0);
     println!("english_lower_table: {}", english_lower_table.0);
     println!("number_table: {}", number_table.0);
+    println!("cj_table: {}", cj_table.0);
     println!("ranges_data: .byte {}", hex_ranges(&dataset.range));
 }
