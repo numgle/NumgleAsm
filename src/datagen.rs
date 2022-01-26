@@ -59,19 +59,23 @@ fn hex_table(data: &[String]) -> (String, usize) {
     (joined, max_size)
 }
 
+fn hex_word(word: u32) -> String {
+    format!("0x{:02x},0x{:02x},0x{:02x},0x{:02x}", word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF, word >> 24)
+}
+
 fn hex_ranges(range: &Ranges) -> String {
     let mut data: Vec<String> = Vec::new();
-    data.push(format!("0x{:x?}", range.completeHangul.start));
-    data.push(format!("0x{:x?}", range.completeHangul.end));
-    data.push(format!("0x{:x?}", range.notCompleteHangul.start));
-    data.push(format!("0x{:x?}", range.notCompleteHangul.end));
-    data.push(format!("0x{:x?}", range.uppercase.start));
-    data.push(format!("0x{:x?}", range.uppercase.end));
-    data.push(format!("0x{:x?}", range.lowercase.start));
-    data.push(format!("0x{:x?}", range.lowercase.end));
-    data.push(format!("0x{:x?}", range.number.start));
-    data.push(format!("0x{:x?}", range.number.end));
-    data.push(String::from("0x0"));
+    data.push(hex_word(range.completeHangul.start));
+    data.push(hex_word(range.completeHangul.end));
+    data.push(hex_word(range.notCompleteHangul.start));
+    data.push(hex_word(range.notCompleteHangul.end));
+    data.push(hex_word(range.uppercase.start));
+    data.push(hex_word(range.uppercase.end));
+    data.push(hex_word(range.lowercase.start));
+    data.push(hex_word(range.lowercase.end));
+    data.push(hex_word(range.number.start));
+    data.push(hex_word(range.number.end));
+    data.push(String::from("0x0,0x0,0x0,0x0"));
     data.join(",")
 }
 
@@ -90,8 +94,16 @@ fn main() {
     }
     let dataset: DataSet = serde_json::from_str(&s).unwrap();
 
-    println!("cho_table: .byte {}", hex_table(&dataset.cho).0);
+    let cho_table = hex_table(&dataset.cho);
+    let jung_table = hex_table(&dataset.jung);
+    let jong_table = hex_table(&dataset.jong);
+    let han_table = hex_table(&dataset.han);
+    let english_upper_table = hex_table(&dataset.englishUpper);
+    let english_lower_table = hex_table(&dataset.englishLower);
+    let number_table = hex_table(&dataset.number);
+    println!("cho_table: .byte {}", cho_table.0);
+    println!(".set cho_table_stride, {}", cho_table.1);
     println!("jung_table: .byte {}", hex_table(&dataset.jung).0);
     println!("han_table: .byte {}", hex_table(&dataset.han).0);
-    println!("ranges_data: .word {}", hex_ranges(&dataset.range));
+    println!("ranges_data: .byte {}", hex_ranges(&dataset.range));
 }

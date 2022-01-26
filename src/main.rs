@@ -6,7 +6,7 @@ mod numgle;
 fn main() {
     let a = CString::new("ㅇ").unwrap();
     unsafe {
-        println!("{}", numgle::_decode_codepoint(a.as_ptr()));
+        println!("{}", numgle::_get_letter_type(0x3147));
     }
     println!("Hello, world!");
 }
