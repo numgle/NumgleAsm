@@ -3,32 +3,36 @@ use std::arch::global_asm;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-struct RustStr {
-    buffer: Vec<u8>,
-    len: u32
+pub struct RustStr {
+    pub buffer: Vec<u8>,
+    pub len: u32
 }
 
 #[repr(C)]
-struct Str {
-    data: *mut u8,
-    len: u32,
-    capacity: u32
+pub struct Str {
+    pub data: *mut u8,
+    pub len: u32,
+    pub capacity: u32
 }
 
 impl RustStr {
-    fn new(len: usize) -> Self {
+    pub fn new(len: usize) -> Self {
         Self {
             buffer: vec![0; len],
             len: 0
         }
     }
 
-    fn to_ffi(&mut self) -> Str {
+    pub fn to_ffi(&mut self) -> Str {
         Str {
             data: self.buffer.as_mut_ptr(),
             len: self.len,
             capacity: self.buffer.len() as u32
         }
+    }
+
+    pub fn to_str(&self) -> String {
+        String::from_utf8(self.buffer[0..(self.len as usize)].to_vec()).unwrap()
     }
 }
 
@@ -37,6 +41,7 @@ extern "C" {
     pub fn _numgle(s: *const c_char) -> u32;
     pub fn _decode_codepoint(s: *const c_char) -> u32;
     pub fn _get_letter_type(s: u32) -> u32;
+    pub fn _numgle_codepoint(str: *mut Str, s: u32);
     pub fn _str_append(str: *mut Str, new: *const c_char);
 }
 
@@ -80,6 +85,22 @@ mod tests {
             assert_eq!(str.buffer[2], 'l' as u8);
             assert_eq!(str.buffer[3], 'l' as u8);
             assert_eq!(str.buffer[4], 'o' as u8);
+        }
+    }
+
+    #[test]
+    fn test_numgle_codepoint() {
+        let data = [
+            (72, "工\n")
+        ];
+        for (s, expected) in data.iter() {
+            let mut str = RustStr::new(100);
+            let mut ffi = str.to_ffi();
+            unsafe {
+                _numgle_codepoint(&mut ffi, *s);
+                str.len = ffi.len;
+            }
+            assert_eq!(str.to_str(), *expected);
         }
     }
 }

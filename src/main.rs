@@ -1,12 +1,17 @@
 use std::ffi::{CString, CStr};
 
+use numgle::RustStr;
+
 mod numgle;
 
 
 fn main() {
-    let a = CString::new("ㅇ").unwrap();
+    let mut str = RustStr::new(100);
+    let mut ffi = str.to_ffi();
     unsafe {
-        println!("{}", numgle::_get_letter_type(0x3147));
+        numgle::_numgle_codepoint(&mut ffi, 0x3149);
+        str.len = ffi.len;
     }
+    println!("{}", str.to_str());
     println!("Hello, world!");
 }
