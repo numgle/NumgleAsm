@@ -7,7 +7,7 @@ use actix_web::{get, web, App, HttpServer, Responder};
 #[get("/{name}")]
 async fn index(web::Path(name): web::Path<String>) -> impl Responder {
     let mut input: NStr = NStr::from(&name);
-    let MAX_SIZE_PER_CHAR = 3 * 16; // (cho + jung + jong) * max_char_size 
+    let MAX_SIZE_PER_CHAR = 3 * 32; // (cho + jung + jong) * max_char_size * 2 
     let mut str = NStr::new(name.len() * MAX_SIZE_PER_CHAR);
     unsafe {
         while input.len() > 0 {
